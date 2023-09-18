@@ -1,17 +1,19 @@
 const ContactDetails = require("../../contact-detail/service/ContactDetails");
 const { ValidationError,NotFoundError } = require("../../../error");
+const db = require("../../../models");
 
 class Contact {
-  static id = 0;
-  constructor(firstName, lastName) {
-    this.id = Contact.id++;
+  // static id = 0;
+  constructor(firstName, lastName,userId) {
+    // this.id = Contact.id++;
+    this.userId = userId
     this.firstName = firstName;
     this.lastName = lastName;
     this.isActive = true;
     this.contactDetails = [];
   }
 
-  static newContact(firstName, lastName) {
+  static async newContact(firstName, lastName, userId) {
     // validation
     try {
       if (typeof firstName != "string") {
@@ -20,12 +22,15 @@ class Contact {
       if (typeof lastName != "string") {
         throw new ValidationError("invalid Last Name");
       }
-      let newContact = new Contact(firstName, lastName);
-      return newContact
+      let newContact = new Contact(firstName, lastName, userId);
+      let dbContact = await db.contact.create(newContact)
+      let result = await db.user.findAll({ where: {id: userId}, include: db.contact });
+      return result
     } catch (error) {
       throw error;
     }
   }
+
   getContactDetailsById(contactDetailId){
     for (let index = 0; index < this.contactDetails.length; index++) {
       if (contactDetailId == this.contactDetails[index].id) {

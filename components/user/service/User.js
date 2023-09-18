@@ -2,12 +2,13 @@ const { NotFoundError, ValidationError, UnauthorizedError } = require("../../../
 const Jwtauthentication = require("../../../middleware/Jwtauthentication");
 const Contact = require('../../contact/service/Contact')
 const bcrypt = require('bcrypt');
+const db = require("../../../models");
 
 class User {
-  static id = 0;
+  // static id = 0;
   static allUsers = [];
   constructor(firstName, lastName, isAdmin, username, password) {
-    this.id = User.id++;
+    // this.id = User.id++;
     this.firstName = firstName;
     this.lastName = lastName;
     this.isActive = true;
@@ -20,6 +21,24 @@ class User {
 
   getContacts(){
     return this.contacts
+  }
+
+  static async getUserByUsername(username){
+    try {
+      let myUsers = await db.user.findAll({where: {username: username}});
+      return myUsers
+    } catch (error) {
+      throw error
+    }
+  }
+
+  static async getUserById(id){
+    try {
+      let myUser = await db.user.findAll({where: {id: id}});
+      return myUser
+    } catch (error) {
+      throw error
+    }
   }
 
   static findUserByUsername(username) {
@@ -119,8 +138,9 @@ class User {
       let hashedPassword = bcrypt.hash(password, 12)
 // console.log(await hashedPassword)
       let newAdmin = new User(firstName, lastName, true, username, await hashedPassword);
-      User.allUsers.push(newAdmin);
-      return newAdmin;
+      // let newUser = User.allUsers.push(newAdmin);
+      let dbAdmin = await db.user.create(newAdmin)
+      return dbAdmin;
     } catch (error) {
       return error// TODO;
     }
@@ -129,65 +149,63 @@ class User {
   static async newUser(firstName, lastName, username, password) {
     // validation
     try {
-      if (typeof firstName != "string") {
-        throw new ValidationError("invalid first Name");
-      }
-      if (typeof lastName != "string") {
-        throw new ValidationError("invalid Last Name");
-      }
-
-      let hashedPassword = bcrypt.hash(password, 12)
-
-      let newUser = new User(firstName, lastName, false, username, await hashedPassword);
-      User.allUsers.push(newUser);
-      return newUser;
+      let hashedPassword = await bcrypt.hash(password, 12)
+      let newUser = new User(firstName, lastName, false, username, hashedPassword);
+      let dbUser = await db.user.create(newUser)
+      // User.allUsers.push(newUser);
+      return dbUser;
     } catch (error) {
       return error// TODO;
     }
   }
 
   /// READ user///
-  static getAllUsers() {
+  static async getAllUsers(offset, limit) {
     try {
-      return User.allUsers;
+      let allUsers = await db.user.findAndCountAll({
+        include: db.contact,
+        offset: offset,
+        limit:  limit
+      })
+      return allUsers
     } catch (error) {
-      return error// TODO;
+      return error
     }
   }
 
   /// UPDATE user///
-  static updateUser(id, parameter, newValue) {
+  static async updateUser(id, parameter, newValue) {
     try {
-      
-
-      let userToBeUpdated = User.findUser(id);
-      if (userToBeUpdated == null) {
+    
+      let userToBeUpdated = await User.getUserById(id);
+      if (userToBeUpdated.length == 0) {
         throw new NotFoundError("User Not Found!");
       }
 
       switch (parameter) {
         case "FirstName":
-          userToBeUpdated.updateFirstName(newValue);
-          return userToBeUpdated;
+          return await db.user.update({ firstName: newValue }, {where: { id: id }});
         case "LastName":
-          userToBeUpdated.updateLastName(newValue);
-          return userToBeUpdated;
+          return await db.user.update({ lastName: newValue }, {where: { id: id }});
         default:
           throw new ValidationError("Invalid Parameter");
       }
     } catch (error) {
-      return error// TODO;
+      return error
     }
   }
 
   /// DELETE user///
-  static deleteUser(id) {
+  static async deleteUser(id) {
     try {
-      let userToBeDeleted = User.findUser(id);
-      userToBeDeleted.isActive = false;
-      return userToBeDeleted;
+      let deleted = await db.user.destroy({
+        where: {
+          id: id
+        }
+      });
+      return deleted;
     } catch (error) {
-      return error// TODO;
+      return error
     }
   }
 
@@ -370,11 +388,11 @@ class User {
 
   static async authenticateUser(username, password) {
     try {
-    let myUser = User.findUserByUsername(username);
-    // console.log(myUser)
-    let check = bcrypt.compare(password, myUser.password)
+    let [myUserdb] =await User.getUserByUsername(username);
+    let myUser = myUserdb.dataValues
+    let check = await bcrypt.compare(password, myUser.password)
     // console.log(check)
-    if (!await check) {
+    if (!check) {
       throw new UnauthorizedError("authentication failed");
     }
       const token = Jwtauthentication.authenticate(myUser.id, myUser.username, myUser.isAdmin, myUser.isActive)

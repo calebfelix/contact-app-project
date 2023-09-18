@@ -5,7 +5,7 @@ const User = require("../../user/service/User");
 require('dotenv').config()
 
 
-const createContact = (req, resp, next) => {
+const createContact = async (req, resp, next) => {
   try {
     const token = req.cookies[process.env.AUTH_COOKIE_NAME];
     if (!token) {
@@ -18,11 +18,11 @@ const createContact = (req, resp, next) => {
       throw new ValidationError("invalid parameters");
     }
 
-    let myUser = User.findUserById(Number(userId))
-    let newContact = Contact.newContact(firstName, lastName)
+    let [myUser] = await User.getUserById(userId)
+    // console.log(myUser)
+    let newContact = await Contact.newContact(firstName, lastName, myUser.dataValues.id)
 
-    myUser.contacts.push(newContact)
-    resp.status(200).send(myUser);
+    resp.status(200).send(newContact);
   } catch (error) {
     next(error);
   }
