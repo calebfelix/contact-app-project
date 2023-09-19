@@ -2,8 +2,7 @@ const { ValidationError } = require("../../../error");
 const Jwtauthentication = require("../../../middleware/Jwtauthentication");
 const Contact = require("../../contact/service/Contact");
 const User = require("../../user/service/User");
-require('dotenv').config()
-
+require("dotenv").config();
 
 const createContact = async (req, resp, next) => {
   try {
@@ -12,39 +11,44 @@ const createContact = async (req, resp, next) => {
       throw new UnauthorizedError("Token Not Found");
     }
 
-    let { firstName, lastName } = req.body
+    let { firstName, lastName } = req.body;
     let userId = Number(req.params.userId);
     if (isNaN(userId)) {
       throw new ValidationError("invalid parameters");
     }
 
-    let [myUser] = await User.getUserById(userId)
-    // console.log(myUser)
-    let newContact = await Contact.newContact(firstName, lastName, myUser.dataValues.id)
+    let [myUser] = await User.getUserById(userId);
+    let newContact = await Contact.newContact(
+      firstName,
+      lastName,
+      myUser.dataValues.id
+    );
 
-    resp.status(200).send(newContact);
+    resp.status(201).send(newContact);
   } catch (error) {
     next(error);
   }
 };
 
-const getAllcontacts = (req, resp, next) => {
+const getAllcontacts = async (req, resp, next) => {
   try {
-
     const token = req.cookies[process.env.AUTH_COOKIE_NAME];
-      if (!token) {
-        throw new UnauthorizedError("Token Not Found");
-      }
-      let payload = Jwtauthentication.verifyToken(token);
-      let myUser = User.findUserById(payload.id)
-
-    resp.status(200).send(myUser.contacts);
+    if (!token) {
+      throw new UnauthorizedError("Token Not Found");
+    }
+    let payload = Jwtauthentication.verifyToken(token);
+    let userId = Number(req.params.userId);
+    if (isNaN(userId)) {
+      throw new ValidationError("invalid parameters");
+    }
+    let result = await Contact.getAllContacts(userId);
+    resp.status(200).send(result);
   } catch (error) {
     next(error);
   }
 };
 
-const getContactById = (req, resp, next) => {
+const getContactById = async (req, resp, next) => {
   try {
     const token = req.cookies[process.env.AUTH_COOKIE_NAME];
     if (!token) {
@@ -60,73 +64,79 @@ const getContactById = (req, resp, next) => {
     if (isNaN(contactId)) {
       throw new ValidationError("invalid contactId");
     }
-    
-    let myUser = User.findUserById(userId)
-    
-    let [myContact, myContactIndex] = myUser.findContactById(contactId)
+
+    let myContact = await Contact.getContactById(userId, contactId);
     resp.status(200).send(myContact);
   } catch (error) {
     next(error);
   }
 };
 
-const updateContact = (req, resp, next) => {
-    try {
-      const token = req.cookies[process.env.AUTH_COOKIE_NAME];
-      if (!token) {
-        throw new UnauthorizedError("Token Not Found");
-      }
-
-      let {parameter, newValue} = req.body
-  
-      let userId = Number(req.params.userId);
-      if (isNaN(userId)) {
-        throw new ValidationError("invalid UserId");
-      }
-  
-      let contactId = Number(req.params.contactId);
-      if (isNaN(contactId)) {
-        throw new ValidationError("invalid contactId");
-      }
-      
-      let myUser = User.findUserById(userId)
-      let [myContact, myContactIndex] = myUser.findContactById(contactId)
-      
-      // let [myContact, myContactIndex] = User.findContactById(contactId)
-    //   console.log(myContact)
-      // let specificContact = myUser.contacts[myContactIndex]
-      myContact.updateContact(parameter, newValue)
-      resp.status(200).send(myContact);
-    } catch (error) {
-      next(error);
+const updateContact = async (req, resp, next) => {
+  try {
+    const token = req.cookies[process.env.AUTH_COOKIE_NAME];
+    if (!token) {
+      throw new UnauthorizedError("Token Not Found");
     }
-  };
 
-  const deleteContact = (req, resp, next) => {
-    try {
-      const token = req.cookies[process.env.AUTH_COOKIE_NAME];
-      if (!token) {
-        throw new UnauthorizedError("Token Not Found");
-      }
-  
-      let userId = Number(req.params.userId);
-      if (isNaN(userId)) {
-        throw new ValidationError("invalid UserId");
-      }
-  
-      let contactId = Number(req.params.contactId);
-      if (isNaN(contactId)) {
-        throw new ValidationError("invalid contactId");
-      }
-      
-      let myUser = User.findUserById(userId)
-      let [myContact, myContactIndex] = myUser.findContactById(contactId)
-      
-      myContact.isActive = false
-      resp.status(200).send(myContact);
-    } catch (error) {
-      next(error);
+    let { parameter, newValue } = req.body;
+
+    let userId = Number(req.params.userId);
+    if (isNaN(userId)) {
+      throw new ValidationError("invalid UserId");
     }
-  };
 
-module.exports = { createContact, getAllcontacts, getContactById, updateContact,deleteContact};
+    let contactId = Number(req.params.contactId);
+    if (isNaN(contactId)) {
+      throw new ValidationError("invalid contactId");
+    }
+
+    let [updated] = await Contact.updateContact(
+      parameter,
+      newValue,
+      userId,
+      contactId
+    );
+    if (updated == 0) {
+      throw new ValidationError("could not update");
+    }
+    resp.status(200).json("updated");
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteContact = (req, resp, next) => {
+  try {
+    const token = req.cookies[process.env.AUTH_COOKIE_NAME];
+    if (!token) {
+      throw new UnauthorizedError("Token Not Found");
+    }
+
+    let userId = Number(req.params.userId);
+    if (isNaN(userId)) {
+      throw new ValidationError("invalid UserId");
+    }
+
+    let contactId = Number(req.params.contactId);
+    if (isNaN(contactId)) {
+      throw new ValidationError("invalid contactId");
+    }
+
+    let deleted = Contact.deleteContact(userId, contactId);
+    if (deleted == 0) {
+      throw new NotFoundError("Contact Dosen't Exist");
+    }
+    resp.status(200).send("Contact deleted");
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  createContact,
+  getAllcontacts,
+  getContactById,
+  updateContact,
+  deleteContact,
+};

@@ -4,7 +4,7 @@ const { createContactDetail,getAllcontactDetails, getContactDetailById,updateCon
 
 const contactDetailRouter = express.Router({ mergeParams: true })
 contactDetailRouter.use(Jwtauthentication.isUser)
-contactDetailRouter.use(Jwtauthentication.isActive)
+contactDetailRouter.use(Jwtauthentication.isCurrentUserContactId)
 
 contactDetailRouter.post('/', createContactDetail)
 contactDetailRouter.get('/', getAllcontactDetails)

@@ -1,16 +1,11 @@
-const ContactDetails = require("../../contact-detail/service/ContactDetails");
-const { ValidationError,NotFoundError } = require("../../../error");
+const { ValidationError} = require("../../../error");
 const db = require("../../../models");
 
 class Contact {
-  // static id = 0;
-  constructor(firstName, lastName,userId) {
-    // this.id = Contact.id++;
-    this.userId = userId
+  constructor(firstName, lastName, userId) {
+    this.userId = userId;
     this.firstName = firstName;
     this.lastName = lastName;
-    this.isActive = true;
-    this.contactDetails = [];
   }
 
   static async newContact(firstName, lastName, userId) {
@@ -23,67 +18,50 @@ class Contact {
         throw new ValidationError("invalid Last Name");
       }
       let newContact = new Contact(firstName, lastName, userId);
-      let dbContact = await db.contact.create(newContact)
-      let result = await db.user.findAll({ where: {id: userId}, include: db.contact });
-      return result
+      let dbContact = await db.contact.create(newContact);
+      let result = await db.user.findAll({
+        where: { id: userId },
+        include: db.contact,
+      });
+      return result;
     } catch (error) {
       throw error;
     }
   }
 
-  getContactDetailsById(contactDetailId){
-    for (let index = 0; index < this.contactDetails.length; index++) {
-      if (contactDetailId == this.contactDetails[index].id) {
-        return [this.contactDetails[index], index];
-      }
-    }
-    return [null,-1];
-  }
-
-  getContactDetailByDetailId(contactDetailId){
-    for (let index = 0; index < this.contactDetails.length; index++) {
-      if (contactDetailId == this.contactDetails[index].id) {
-        return [this.contactDetails[index], index];
-      }
-    }
-    return [null,-1];
-  }
-
-  deleteContactDetail(index){
-    return this.contactDetails.splice(index, 1)
-  }
-
-  UpdateContactFirstName(newValue) {
+  static async getAllContacts(userId) {
     try {
-      if (typeof newValue != "string") {
-        throw new ValidationError("Invalid First Name");
-      }
-      this.firstName = newValue;
+      let result = await db.contact.findAll({ where: { user_id: userId } });
+      return result;
     } catch (error) {
-      throw error;
+      return error;
     }
   }
 
-  UpdateContactLastName(newValue) {
+  static async getContactById(userId, contactId) {
     try {
-      if (typeof newValue != "string") {
-        throw new ValidationError("Invalid Last Name");
-      }
-      this.lastName = newValue;
+      let result = await db.contact.findAll({
+        where: { id: contactId, user_id: userId },
+      });
+      return result;
     } catch (error) {
-      throw error;
+      return error;
     }
   }
 
-  updateContact(parameter, newValue) {
+  static async updateContact(parameter, newValue, userId, contactId) {
     try {
       switch (parameter) {
         case "firstName":
-          this.UpdateContactFirstName(newValue);
-          return this;
+          return await db.contact.update(
+            { firstName: newValue },
+            { where: { id: contactId, user_id: userId } }
+          );
         case "lastName":
-          this.UpdateContactLastName(newValue);
-          return this;
+          return await db.contact.update(
+            { lastName: newValue },
+            { where: { id: contactId, user_id: userId } }
+          );
         default:
           throw new ValidationError("Invalid Parameter");
       }
@@ -92,16 +70,15 @@ class Contact {
     }
   }
 
-  createContactDetail(typeOfContactDetail, valueOfContactDetail) {
-    let newContactDetail = ContactDetails.newContactDetail(
-      typeOfContactDetail,
-      valueOfContactDetail
-    );
-    this.contactDetails.push(newContactDetail);
-  }
-
-  getContactDetails(){
-    return this.contactDetails
+  static async deleteContact(userId, contactId) {
+    try {
+      let deleted = await db.contact.destroy({
+        where: { id: contactId, user_id: userId },
+      });
+      return deleted;
+    } catch (error) {
+      return error;
+    }
   }
 }
 

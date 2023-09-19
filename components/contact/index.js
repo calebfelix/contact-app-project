@@ -5,7 +5,7 @@ const { contactDetailRouter } = require('../contact-detail')
 
 const contactRouter = express.Router({ mergeParams: true })
 contactRouter.use(Jwtauthentication.isUser)
-// contactRouter.use(Jwtauthentication.isActive)
+contactRouter.use(Jwtauthentication.isCurrentUser)
 
 // User CRUD
 contactRouter.post('/', createContact)

@@ -1,37 +1,10 @@
-const { ValidationError } = require("../../../error");
-const Jwtauthentication = require("../../../middleware/Jwtauthentication");
-const Contact = require("../../contact/service/Contact");
-const User = require("../../user/service/User");
-require('dotenv').config()
+const { ValidationError, NotFoundError } = require("../../../error");
+const ContactDetails = require("../service/ContactDetails");
+require("dotenv").config();
 
-const createContactDetail = (req, resp, next) => {
-    try {
-      let {typeOfContactDetail, valueOfContactDetail} = req.body
-
-      const token = req.cookies[process.env.AUTH_COOKIE_NAME];
-      if (!token) {
-        throw new UnauthorizedError("Token Not Found");
-      }
-  
-      let userId = Number(req.params.userId);
-      if (isNaN(userId)) {
-        throw new ValidationError("invalid userID");
-      }
-      let contactId = Number(req.params.contactId);
-      if (isNaN(contactId)) {
-        throw new ValidationError("invalid contactID");
-      }
-  
-      let myUser = User.findUserById(Number(userId))
-      let newContactDetail = myUser.createContactDetail(contactId, typeOfContactDetail, valueOfContactDetail)
-      resp.status(200).send(newContactDetail);
-    } catch (error) {
-      next(error);
-    }
-  };
-
-const getAllcontactDetails = (req, resp, next) => {
+const createContactDetail = async (req, resp, next) => {
   try {
+    let { typeOfContactDetail, valueOfContactDetail } = req.body;
 
     const token = req.cookies[process.env.AUTH_COOKIE_NAME];
     if (!token) {
@@ -47,17 +20,20 @@ const getAllcontactDetails = (req, resp, next) => {
       throw new ValidationError("invalid contactID");
     }
 
-    let myUser = User.findUserById(Number(userId))
-    let ContactDetails = myUser.getContactDetails(contactId)
-    resp.status(200).send(ContactDetails);
+    let newContactDetail = await ContactDetails.newContactDetail(
+      typeOfContactDetail,
+      valueOfContactDetail,
+      userId,
+      contactId
+    );
+    resp.status(201).send(newContactDetail);
   } catch (error) {
     next(error);
   }
 };
 
-const getContactDetailById = (req, resp, next) => {
+const getAllcontactDetails = async (req, resp, next) => {
   try {
-
     const token = req.cookies[process.env.AUTH_COOKIE_NAME];
     if (!token) {
       throw new UnauthorizedError("Token Not Found");
@@ -71,53 +47,14 @@ const getContactDetailById = (req, resp, next) => {
     if (isNaN(contactId)) {
       throw new ValidationError("invalid contactID");
     }
-    let contactDetailId = Number(req.params.contactDetailId);
-    if (isNaN(contactDetailId)) {
-      throw new ValidationError("invalid contactDetailID");
-    }
-
-    let myUser = User.findUserById(userId)
-    let [myContact, myContactIndex] = myUser.findContactById(contactId)
-    let myContactDetail = myContact.getContactDetailByDetailId(contactDetailId)
-
-    resp.status(200).send(myContactDetail);
+    let result = await ContactDetails.getAllContacts(contactId);
+    resp.status(200).send(result);
   } catch (error) {
     next(error);
   }
 };
 
-const updateContactDetail = (req, resp, next) => {
-  try {
-    let {type, value} = req.body
-
-    const token = req.cookies[process.env.AUTH_COOKIE_NAME];
-    if (!token) {
-      throw new UnauthorizedError("Token Not Found");
-    }
-
-    let userId = Number(req.params.userId);
-    if (isNaN(userId)) {
-      throw new ValidationError("invalid userID");
-    }
-    let contactId = Number(req.params.contactId);
-    if (isNaN(contactId)) {
-      throw new ValidationError("invalid contactID");
-    }
-    let contactDetailId = Number(req.params.contactDetailId);
-    if (isNaN(contactDetailId)) {
-      throw new ValidationError("invalid contactDetailID");
-    }
-
-    let myUser = User.findUserById(userId)
-    let myContact = myUser.updateContactDetails(contactId, contactDetailId,type,value)
-
-    resp.status(200).send(myContact);
-  } catch (error) {
-    next(error);
-  }
-};
-
-const deleteContactDetail = (req, resp, next) => {
+const getContactDetailById = async (req, resp, next) => {
   try {
     const token = req.cookies[process.env.AUTH_COOKIE_NAME];
     if (!token) {
@@ -137,12 +74,92 @@ const deleteContactDetail = (req, resp, next) => {
       throw new ValidationError("invalid contactDetailID");
     }
 
-    let myUser = User.findUserById(userId)
-    let myContact = myUser.deleteContactDetails(contactId, contactDetailId)
-    resp.status(200).send(myContact);
+    let result = await ContactDetails.getContactDetailById(
+      contactId,
+      contactDetailId
+    );
+
+    resp.status(200).send(result);
   } catch (error) {
     next(error);
   }
 };
 
-module.exports = { createContactDetail,getAllcontactDetails, getContactDetailById, updateContactDetail,deleteContactDetail }
+const updateContactDetail = async (req, resp, next) => {
+  try {
+    let { type, value } = req.body;
+
+    const token = req.cookies[process.env.AUTH_COOKIE_NAME];
+    if (!token) {
+      throw new UnauthorizedError("Token Not Found");
+    }
+
+    let userId = Number(req.params.userId);
+    if (isNaN(userId)) {
+      throw new ValidationError("invalid userID");
+    }
+    let contactId = Number(req.params.contactId);
+    if (isNaN(contactId)) {
+      throw new ValidationError("invalid contactID");
+    }
+    let contactDetailId = Number(req.params.contactDetailId);
+    if (isNaN(contactDetailId)) {
+      throw new ValidationError("invalid contactDetailID");
+    }
+
+    let [myContactDetail] = await ContactDetails.updateContactDetails(
+      contactId,
+      contactDetailId,
+      type,
+      value
+    );
+    if (myContactDetail == 0) {
+      throw new ValidationError("not updated");
+    }
+
+    resp.status(200).send("Contact Detail updated");
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteContactDetail = async (req, resp, next) => {
+  try {
+    const token = req.cookies[process.env.AUTH_COOKIE_NAME];
+    if (!token) {
+      throw new UnauthorizedError("Token Not Found");
+    }
+
+    let userId = Number(req.params.userId);
+    if (isNaN(userId)) {
+      throw new ValidationError("invalid userID");
+    }
+    let contactId = Number(req.params.contactId);
+    if (isNaN(contactId)) {
+      throw new ValidationError("invalid contactID");
+    }
+    let contactDetailId = Number(req.params.contactDetailId);
+    if (isNaN(contactDetailId)) {
+      throw new ValidationError("invalid contactDetailID");
+    }
+
+    let deleted = await ContactDetails.deleteContactDetail(
+      contactId,
+      contactDetailId
+    );
+    if (deleted == 0) {
+      throw new NotFoundError("Contact Dosen't Exist");
+    }
+    resp.status(200).json("contact Detail deleted");
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  createContactDetail,
+  getAllcontactDetails,
+  getContactDetailById,
+  updateContactDetail,
+  deleteContactDetail,
+};
