@@ -1,4 +1,4 @@
-const { ValidationError } = require("../../../error");
+const { ValidationError, NotFoundError } = require("../../../error");
 const User = require("../service/User");
 require("dotenv").config();
 

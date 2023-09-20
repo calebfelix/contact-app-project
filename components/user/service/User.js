@@ -29,7 +29,7 @@ class User {
 
   static async getUserById(id) {
     try {
-      let myUser = await db.user.findAll({ where: { id: id } });
+      let myUser = await db.user.findAll({ where: { id: id }, include: { all: true, nested: true }, });
       return myUser;
     } catch (error) {
       throw error;

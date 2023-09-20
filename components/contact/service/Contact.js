@@ -42,6 +42,7 @@ class Contact {
     try {
       let result = await db.contact.findAll({
         where: { id: contactId, user_id: userId },
+        include: db.contactDetail
       });
       return result;
     } catch (error) {
