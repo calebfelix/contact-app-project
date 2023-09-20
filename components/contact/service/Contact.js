@@ -31,7 +31,7 @@ class Contact {
 
   static async getAllContacts(userId) {
     try {
-      let result = await db.contact.findAll({ where: { user_id: userId } });
+      let result = await db.contact.findAll({ where: { user_id: userId }, include: db.contactDetail });
       return result;
     } catch (error) {
       return error;
