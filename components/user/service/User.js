@@ -19,19 +19,25 @@ class User {
   }
 
   static async getUserByUsername(username) {
+    const t = await db.sequelize.transaction();
     try {
-      let myUsers = await db.user.findAll({ where: { username: username } });
+      let myUsers = await db.user.findAll({ where: { username: username } , transaction:t});
+      await t.commit()
       return myUsers;
     } catch (error) {
+      await t.rollback()
       throw error;
     }
   }
 
   static async getUserById(id) {
+    const t = await db.sequelize.transaction();
     try {
-      let myUser = await db.user.findAll({ where: { id: id }, include: { all: true, nested: true }, });
+      let myUser = await db.user.findAll({ where: { id: id }, include: { all: true, nested: true }, transaction:t});
+      await t.commit()
       return myUser;
     } catch (error) {
+      await t.rollback()
       throw error;
     }
   }
@@ -64,6 +70,7 @@ class User {
 
   static async newUser(firstName, lastName, username, password) {
     // validation
+    const t = await db.sequelize.transaction();
     try {
       let hashedPassword = await bcrypt.hash(password, 12);
       let newUser = new User(
@@ -73,64 +80,81 @@ class User {
         username,
         hashedPassword
       );
-      let dbUser = await db.user.create(newUser);
+      let dbUser = await db.user.create(newUser,t);
+      await t.commit()
       return dbUser;
     } catch (error) {
+      await t.rollback()
       return error;
     }
   }
 
   /// READ user///
   static async getAllUsers(offset, limit) {
+    const t = await db.sequelize.transaction();
     try {
       let allUsers = await db.user.findAndCountAll({
         include: { all: true, nested: true },
         offset: offset,
         limit: limit,
+        transaction:t
       });
+      await t.commit()
       return allUsers;
     } catch (error) {
+      await t.rollback()
       return error;
     }
   }
 
   /// UPDATE user///
   static async updateUser(id, parameter, newValue) {
+    const t = await db.sequelize.transaction();
     try {
       let userToBeUpdated = await User.getUserById(id);
       if (userToBeUpdated.length == 0) {
         throw new NotFoundError("User Not Found!");
       }
+      let up = undefined
 
       switch (parameter) {
         case "FirstName":
-          return await db.user.update(
+          up = await db.user.update(
             { firstName: newValue },
-            { where: { id: id } }
+            { where: { id: id }, transaction:t }
           );
+          await t.commit()
+          return up
         case "LastName":
-          return await db.user.update(
+          up = await db.user.update(
             { lastName: newValue },
-            { where: { id: id } }
+            { where: { id: id }, transaction:t }
           );
+          await t.commit()
+          return up
         default:
           throw new ValidationError("Invalid Parameter");
       }
     } catch (error) {
+      await t.rollback()
       return error;
     }
   }
 
   /// DELETE user///
   static async deleteUser(id) {
+    const t = await db.sequelize.transaction();
     try {
       let deleted = await db.user.destroy({
         where: {
           id: id,
         },
+        transaction:t
       });
+      await t.commit()
       return deleted;
     } catch (error) {
+      await t.rollback()
       return error;
     }
   }
